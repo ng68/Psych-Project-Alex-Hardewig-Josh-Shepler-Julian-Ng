@@ -66,7 +66,7 @@ public class View extends JFrame {
     JLabel userTitle4 = new JLabel("");
     JPanel description = new JPanel(null);
     JLabel errorMessage5 = new JLabel("");
-
+    JTextField suggestion = new JTextField();
 
 
 
