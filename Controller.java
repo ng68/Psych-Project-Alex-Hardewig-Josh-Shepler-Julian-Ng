@@ -51,6 +51,18 @@ public class Controller {
         view.makeLoginWindow();
 
     }
+    
+     public void closeStreams() {
+        try {
+            s.close();
+            out.close();
+            isr.close();
+            in.close();
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 
     public static void main(String[] args) {
         Controller game = null;
