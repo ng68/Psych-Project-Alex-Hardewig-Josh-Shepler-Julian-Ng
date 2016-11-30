@@ -1,0 +1,70 @@
+import java.io.*;
+import java.net.*;
+import java.util.*;
+
+/**
+ * Program info
+ *
+ * @author Alex Hardewig, ahardewi@purdue.edu, lab sec G03
+ * @version date
+ */
+public class FoilMakerGameServer {
+
+    static HashMap<Integer, Socket> clientSocketMap = new HashMap<Integer, Socket>(); //collection of sockets to
+    // currently connected clients. Stored with client IDs as key
+    static HashMap<Integer, RequestHandler> handlerMap = new HashMap<Integer, RequestHandler>(); //collection of
+    // request handlers -- one per client socket stored with same key as clientSockets
+    static int clientNum = 0; // id of next client
+
+
+    public static void main(String[] args) {
+        try {
+            startGame(9999);
+        } catch (IOException e) {
+            System.err.println("Unexpected error: " + e.getMessage());
+        }
+    }
+
+    private static void startGame(int portNumber) throws IOException {
+        ServerSocket serverSocket = null;
+
+        try{
+            serverSocket = new ServerSocket(portNumber);
+
+            while(true){
+                clientSocketMap.put(clientNum, serverSocket.accept());
+                System.out.println("Got a request: " + clientSocketMap.get(clientNum).getPort());
+                handlerMap.put(clientNum, new RequestHandler(clientSocketMap.get(clientNum), clientNum));
+                handlerMap.get(clientNum).start();
+                clientNum++;
+//                checkForFinishedClients();
+            }
+        } catch (MalformedURLException e) {
+            System.exit(3);
+        } finally {
+            if(serverSocket != null)
+                serverSocket.close();
+//            for (Socket s : clientSocketMap.values())
+//                if(s != null && !s.isClosed())
+//                    s.close();
+        }
+    }
+
+//    private static void checkForFinishedClients(){
+//        Socket socket = null;
+//        RequestHandler handler = null;
+//
+//        for(Integer cID : clientSocketMap.keySet()){
+//            socket = clientSocketMap.get(cID);
+//            if(socket.isClosed()){
+//                handler = handlerMap.get(cID);
+//                //should we wait for this handler thread to join?
+//                handlerMap.remove(cID);
+//                clientSocketMap.remove(cID);
+//            }
+//        }
+//    }
+
+
+
+}
