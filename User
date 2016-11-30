@@ -1,0 +1,60 @@
+/**
+ * Program info
+ *
+ * @author Alex Hardewig, ahardewi@purdue.edu, lab sec G03
+ * @version date
+ */
+public class User {
+    private String username;
+    private String password;
+    private String userToken;
+    private String gameToken;
+    private boolean isPlaying = false;
+
+//    public User(String username, String password, String userToken, String gameToken){
+//        this.username = username;
+//        this.password = password;
+//        this.userToken = userToken;
+//        this.gameToken = gameToken;
+//    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
+
+    public String getUserToken() {
+        return userToken;
+    }
+
+    public void setUserToken(String userToken) {
+        this.userToken = userToken;
+    }
+
+    public String getGameToken() {
+        return gameToken;
+    }
+
+    public void setGameToken(String gameToken) {
+        this.gameToken = gameToken;
+    }
+
+    public boolean isPlaying() {
+        return isPlaying;
+    }
+
+    public void setPlaying(boolean playing) {
+        isPlaying = playing;
+    }
+}
