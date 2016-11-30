@@ -1,0 +1,207 @@
+import org.apache.commons.lang.StringUtils;
+
+import java.io.*;
+import java.net.*;
+import java.util.HashMap;
+import java.util.Random;
+import java.util.Scanner;
+
+/**
+ * Program info
+ *
+ * @author Alex Hardewig, ahardewi@purdue.edu, lab sec G03
+ * @version date
+ */
+public class RequestHandler extends Thread {
+    private Socket clientSocket;
+    private int clientID;
+    PrintWriter outToClient = null;
+    BufferedReader inFromClient = null;
+
+    private File output = new File("/Users/alexhardewig/IdeaProjects/cs180/Project4/src/UserDatabase.txt");
+    BufferedWriter out = null;
+    private Scanner fileScanner = null;
+    private User u = new User();
+
+    HashMap <String, User> userHashMap = new HashMap<String, User>();
+
+    public RequestHandler(Socket clientSocket, int clientID){
+        this.clientSocket = clientSocket;
+        this.clientID = clientID;
+
+    }
+
+
+    public void run(){
+
+        String input = null;
+        try{
+            outToClient = new PrintWriter(clientSocket.getOutputStream(), true);
+            inFromClient = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+            out = new BufferedWriter(new FileWriter(output, true));
+
+            while(true) {
+                input = inFromClient.readLine();
+                if (input.contains("CREATENEWUSER")) {
+                    registerUser(input);
+                }
+                if (input.contains("LOGIN")){
+                    loginUser(input);
+                }
+
+                if (input.contains("STARTNEWGAME")){
+                    startNewGame(input);
+                }
+            }
+
+        } catch (IOException e) {
+            System.out.println("Unexpected IO exception for client " + clientID);
+        }
+    }
+
+    public void startNewGame(String input){
+        String array[] = input.split("--");
+        if (array[2].equals(u.getUserToken())){
+
+
+
+        }
+
+    }
+
+
+    public void registerUser(String input){
+        String array[] = input.split("--");
+
+        if (array[1] == null){
+            outToClient.println("RESPONSE--CREATENEWUSER--INVALIDUSERNAME");
+            return;
+        }
+        if (array[1].length() >= 10){
+            outToClient.println("RESPONSE--CREATENEWUSER--INVALIDUSERNAME");
+            return;
+        }
+        if (!StringUtils.containsOnly(array[1], "1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_")){
+            outToClient.println("RESPONSE--CREATENEWUSER--INVALIDUSERNAME"); //TODO look into regex for alphanumerics
+            return;
+        }
+
+
+        if (array[2] == null){
+            outToClient.println("RESPONSE--CREATENEWUSER--INVALIDUSERPASSWORD");
+            return;
+        }
+        if (array[2].length() >= 10){
+            outToClient.println("RESPONSE--CREATENEWUSER--INVALIDUSERPASSWORD");
+            return;
+        }
+        if (!StringUtils.containsOnly(array[2], "1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ#&$*")){
+            outToClient.println("RESPONSE--CREATENEWUSER--INVALIDUSERPASSWORD"); //TODO look into regex for
+            // alphanumerics
+            return;
+        }
+        if (!StringUtils.containsAny(array[2], "ABCDEFGHIJKLMNOPQRSTUVWXYZ")){
+            outToClient.println("RESPONSE--CREATENEWUSER--INVALIDUSERPASSWORD"); //TODO one uppercase letter
+            return;
+        }
+        if (!StringUtils.containsAny(array[2], "1234567890")){
+            outToClient.println("RESPONSE--CREATENEWUSER--INVALIDUSERPASSWORD"); //TODO one number
+            return;
+        }
+        try {
+            fileScanner = new Scanner(output);
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
+
+        if (checkUsername(fileScanner, array[1]) == 1){
+            outToClient.println("RESPONSE--CREATENEWUSER--USERALREADYEXISTS");
+        }
+        else {
+
+            try {
+                out.write(array[1] + ":" + array[2] + ":0:0:0" + System.getProperty(System.lineSeparator()) );
+                out.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            outToClient.println("RESPONSE--CREATENEWUSER--SUCCESS");
+        }
+    }
+
+
+    public void loginUser(String input){
+        String array[] = input.split("--");
+        if (checkUsername(fileScanner, array[1]) == -1){
+            outToClient.println("RESPONSE--LOGIN--UNKNOWNUSER");
+        }
+        if (checkPassword(fileScanner, input) == -1){
+            outToClient.println("RESPONSE--LOGIN--UNKNOWNUSERPASSWORD");
+        }
+//        if (checkPassword(fileScanner, input) == -1){
+//            outToClient.println("RESPONSE--LOGIN--UNKNOWNUSERPASSWORD"); TODO CHECK IF LOGGED IN HOW PLS HELP
+//        }
+        else {
+//            User u = new User();
+            u.setUserToken(generateRandomToken());
+            outToClient.println("RESPONSE--LOGIN--SUCCESS--" + u.getUserToken());
+            userHashMap.put(array[1], new User());
+
+
+        }
+
+
+
+    }
+
+    public String generateRandomToken(){
+        String password = "";
+        String[] passworda = {"A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V",
+                "W","X","Y","Z","a","b","c","d","e","f","g","h","i","j","k","l","m","n","o","p","q","r","s","t","u","v",
+                "w","x","y","z"};
+
+        for (int i = 0; i < 100; i++){
+            Random r = new Random();
+            password =  password + (passworda[r.nextInt(62)]);
+
+        }
+        return password;
+    }
+    public int checkPassword(Scanner fileScanner, String input){
+        String array[] = input.split("--");
+
+        while (fileScanner.hasNextLine()){
+            String line = fileScanner.nextLine();
+
+            if (line.contains(array[1] + ":" + array[2])){
+                return 1;
+            }
+
+        }
+
+        return -1;
+
+
+    }
+
+
+    public int checkUsername(Scanner fileScanner, String username){
+
+        while (fileScanner.hasNextLine()){
+            String line = fileScanner.nextLine();
+
+            if (line.contains(username)){
+                return 1;
+            }
+
+        }
+
+        return -1;
+
+
+    }
+
+}
+
+
+
