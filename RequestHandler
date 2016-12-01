@@ -55,7 +55,7 @@ public class RequestHandler extends Thread {
             }
 
         } catch (IOException e) {
-            System.out.println("Unexpected IO exception for client " + clientID);
+            System.err.println("Unexpected IO exception for client " + clientID);
         }
     }
 
