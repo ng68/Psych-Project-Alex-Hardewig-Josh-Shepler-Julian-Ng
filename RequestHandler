@@ -2,9 +2,7 @@ import org.apache.commons.lang.StringUtils;
 
 import java.io.*;
 import java.net.*;
-import java.util.HashMap;
-import java.util.Random;
-import java.util.Scanner;
+import java.util.*;
 
 /**
  * Program info
@@ -15,21 +13,27 @@ import java.util.Scanner;
 public class RequestHandler extends Thread {
     private Socket clientSocket;
     private int clientID;
-    PrintWriter outToClient = null;
-    BufferedReader inFromClient = null;
+    private PrintWriter outToClient = null;
+    private BufferedReader inFromClient = null;
+    private static ArrayList<User> participants = new ArrayList<>();
 
     private File output = new File("/Users/alexhardewig/IdeaProjects/cs180/Project4/src/UserDatabase.txt");
-    BufferedWriter out = null;
-    private Scanner fileScanner = null;
-    private User u = new User();
+    private BufferedWriter out = null;
+    private Scanner fileScanner = new Scanner(output);
+    private Scanner fileScanner2 = new Scanner(output);
+    private Scanner fileScanner3 = new Scanner(output);
+    private FoilMakerGameServer fmgs = new FoilMakerGameServer();
 
-    HashMap <String, User> userHashMap = new HashMap<String, User>();
+    private static ArrayList<String> gameTokenList = new ArrayList<>();
+    private static HashMap <String, Thread> gameHashMap = new HashMap<String, Thread>();
+    private static HashMap <String, User> userHashMap = new HashMap<String, User>();
 
-    public RequestHandler(Socket clientSocket, int clientID){
+    public RequestHandler(Socket clientSocket, int clientID) throws FileNotFoundException {
         this.clientSocket = clientSocket;
         this.clientID = clientID;
 
     }
+
 
 
     public void run(){
@@ -52,20 +56,117 @@ public class RequestHandler extends Thread {
                 if (input.contains("STARTNEWGAME")){
                     startNewGame(input);
                 }
+                if (input.contains("JOINGAME")){
+                    joinGame(input);
+                }
+                if (input.contains("LOGOUT")){
+                    logoutUser(input);
+                }
+                if (input.contains("ALLPARTICIPANTSHAVEJOINED"){
+
+
+
+                }
+
             }
 
         } catch (IOException e) {
-            System.err.println("Unexpected IO exception for client " + clientID);
+            System.out.println("Error");
+
         }
     }
 
-    public void startNewGame(String input){
+    public void logoutUser(String input){
         String array[] = input.split("--");
-        if (array[2].equals(u.getUserToken())){
 
 
+    }
+
+    public void joinGame(String input){
+        String array[] = input.split("--");
+        Iterator iterate = userHashMap.entrySet().iterator();
+
+        User finUsername = null;
+//        for (Map.Entry<String, User> entry : userHashMap.entrySet())
+//        {
+//            System.out.println(entry.getKey() + "/" + entry.getValue());
+//            if (entry.getValue().getUserToken().equals(array[1])){
+//                finUsername = entry.getValue();
+//            }
+//        }
+        while (iterate.hasNext()) {
+            Map.Entry entry = (Map.Entry) iterate.next();
+            User tempUser = (User) entry.getValue();
+            if (tempUser.getUserToken().equals(array[1])){
+                finUsername = tempUser;
+                for (int i = 0; i < gameTokenList.size();i++){
+
+                    if (array[2].equals(gameTokenList.get(i))) {
+
+                        String tempToken = gameTokenList.get(i);
+                        finUsername.setGameToken(tempToken);
+                        System.out.println(tempToken);
+                        participants.add(finUsername);
+
+                        outToClient.println("RESPONSE--JOINGAME--SUCCESS" + "--"  + gameTokenList.get(i));
+
+                        break;
+                    }
+                }
+            }
 
         }
+
+    }
+
+    public void startNewGame(String input) throws FileNotFoundException {
+        String array[] = input.split("--");
+        Iterator iterate = userHashMap.entrySet().iterator();
+        String gameToken;
+
+        while (iterate.hasNext()){
+            Map.Entry entry = (Map.Entry) iterate.next();
+            User tempUser = (User)entry.getValue();
+//            if (!tempUser.getUserToken().equals(array[1])){
+//                outToClient.println("RESPONSE--STARTNEWGAME--USERNOTLOGGEDIN");
+//                break;
+//            }
+
+            if (tempUser.getUserToken().equals(array[1])){
+                 gameToken = generateRandomToken(3).toLowerCase();
+                tempUser.setGameToken(gameToken);
+                gameTokenList.add(gameToken);
+
+                outToClient.println("RESPONSE--STARTNEWGAME--SUCCESS--" + gameToken);
+
+                while (true){
+
+                   Iterator iterate2 = userHashMap.entrySet().iterator();
+                   while (iterate2.hasNext()){
+                       Map.Entry entry1 = (Map.Entry) iterate2.next();
+                       User joiner = (User)entry1.getValue();
+                       if (joiner.getGameToken().equals(gameToken) && !(joiner.getUsername().equals(tempUser
+                               .getUsername()))){
+                           
+                           outToClient.println("NEWPARTICIPANT--" + joiner.getUsername()  + "--" + checkCumulativeScore
+                                   (fileScanner3, joiner.getUsername()));
+                           return;
+
+                       }
+                   }
+
+
+
+
+               }
+//                gameHashMap.put(gameToken,new RequestHandler())
+
+            }
+//            else {
+//                outToClient.println("RESPONSE--STARTNEWGAME--FAILURE");
+//            }
+        }
+
 
     }
 
@@ -82,10 +183,9 @@ public class RequestHandler extends Thread {
             return;
         }
         if (!StringUtils.containsOnly(array[1], "1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_")){
-            outToClient.println("RESPONSE--CREATENEWUSER--INVALIDUSERNAME"); //TODO look into regex for alphanumerics
+            outToClient.println("RESPONSE--CREATENEWUSER--INVALIDUSERNAME");
             return;
         }
-
 
         if (array[2] == null){
             outToClient.println("RESPONSE--CREATENEWUSER--INVALIDUSERPASSWORD");
@@ -96,22 +196,17 @@ public class RequestHandler extends Thread {
             return;
         }
         if (!StringUtils.containsOnly(array[2], "1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ#&$*")){
-            outToClient.println("RESPONSE--CREATENEWUSER--INVALIDUSERPASSWORD"); //TODO look into regex for
+            outToClient.println("RESPONSE--CREATENEWUSER--INVALIDUSERPASSWORD");
             // alphanumerics
             return;
         }
         if (!StringUtils.containsAny(array[2], "ABCDEFGHIJKLMNOPQRSTUVWXYZ")){
-            outToClient.println("RESPONSE--CREATENEWUSER--INVALIDUSERPASSWORD"); //TODO one uppercase letter
+            outToClient.println("RESPONSE--CREATENEWUSER--INVALIDUSERPASSWORD");
             return;
         }
         if (!StringUtils.containsAny(array[2], "1234567890")){
-            outToClient.println("RESPONSE--CREATENEWUSER--INVALIDUSERPASSWORD"); //TODO one number
+            outToClient.println("RESPONSE--CREATENEWUSER--INVALIDUSERPASSWORD");
             return;
-        }
-        try {
-            fileScanner = new Scanner(output);
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
         }
 
         if (checkUsername(fileScanner, array[1]) == 1){
@@ -120,7 +215,8 @@ public class RequestHandler extends Thread {
         else {
 
             try {
-                out.write(array[1] + ":" + array[2] + ":0:0:0" + System.getProperty(System.lineSeparator()) );
+                out.append("\n");
+                out.write(array[1] + ":" + array[2] + ":0:0:0");
                 out.close();
             } catch (IOException e) {
                 e.printStackTrace();
@@ -135,34 +231,27 @@ public class RequestHandler extends Thread {
         if (checkUsername(fileScanner, array[1]) == -1){
             outToClient.println("RESPONSE--LOGIN--UNKNOWNUSER");
         }
-        if (checkPassword(fileScanner, input) == -1){
-            outToClient.println("RESPONSE--LOGIN--UNKNOWNUSERPASSWORD");
+        if (checkPassword(fileScanner2, input) == -1){
+            outToClient.println("RESPONSE--LOGIN--INVALIDUSERPASSWORD");
         }
-//        if (checkPassword(fileScanner, input) == -1){
-//            outToClient.println("RESPONSE--LOGIN--UNKNOWNUSERPASSWORD"); TODO CHECK IF LOGGED IN HOW PLS HELP
-//        }
+        if (userHashMap.containsKey(array[1])){
+            outToClient.println("RESPONSE--LOGIN--USERALREADYLOGGEDIN");
+        }
         else {
-//            User u = new User();
-            u.setUserToken(generateRandomToken());
-            outToClient.println("RESPONSE--LOGIN--SUCCESS--" + u.getUserToken());
-            userHashMap.put(array[1], new User());
-
-
+            userHashMap.put(array[1], new User(array[1], array[2],generateRandomToken(10)));
+            outToClient.println("RESPONSE--LOGIN--SUCCESS--" + userHashMap.get(array[1]).getUserToken());
         }
-
-
-
     }
 
-    public String generateRandomToken(){
+    public String generateRandomToken(int numCharacters){
         String password = "";
         String[] passworda = {"A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V",
                 "W","X","Y","Z","a","b","c","d","e","f","g","h","i","j","k","l","m","n","o","p","q","r","s","t","u","v",
                 "w","x","y","z"};
 
-        for (int i = 0; i < 100; i++){
+        for (int i = 0; i < numCharacters; i++){
             Random r = new Random();
-            password =  password + (passworda[r.nextInt(62)]);
+            password =  password + (passworda[r.nextInt(51)]);
 
         }
         return password;
@@ -170,7 +259,7 @@ public class RequestHandler extends Thread {
     public int checkPassword(Scanner fileScanner, String input){
         String array[] = input.split("--");
 
-        while (fileScanner.hasNextLine()){
+        while (fileScanner != null){
             String line = fileScanner.nextLine();
 
             if (line.contains(array[1] + ":" + array[2])){
@@ -180,8 +269,6 @@ public class RequestHandler extends Thread {
         }
 
         return -1;
-
-
     }
 
 
@@ -189,8 +276,9 @@ public class RequestHandler extends Thread {
 
         while (fileScanner.hasNextLine()){
             String line = fileScanner.nextLine();
+            String[] name = line.split(":");
 
-            if (line.contains(username)){
+            if (name[0].equals(username)){
                 return 1;
             }
 
@@ -199,6 +287,21 @@ public class RequestHandler extends Thread {
         return -1;
 
 
+    }
+
+    public int checkCumulativeScore(Scanner fileScanner, String username){
+
+        while (fileScanner.hasNextLine()){
+            String line = fileScanner.nextLine();
+            String[] name = line.split(":");
+
+            if (name[0].equals(username)){
+                return Integer.parseInt(name[2]);
+            }
+
+        }
+
+        return -1;
     }
 
 }
