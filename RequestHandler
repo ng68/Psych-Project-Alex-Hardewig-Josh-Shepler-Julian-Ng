@@ -169,7 +169,34 @@ public class RequestHandler extends Thread {
 
 
     }
+    
+    public void launchGame(String input) {
+        String array[] = input.split("--");
 
+        Iterator iterate = userHashMap.entrySet().iterator();
+
+        User finUsername = null;
+        boolean validUser = false;
+        boolean validGame = false;
+
+        while (iterate.hasNext()) {
+            Map.Entry entry = (Map.Entry) iterate.next();
+            User tempUser = (User) entry.getValue();
+            if (tempUser.getUserToken().equals(array[1])){
+                validUser = true;
+            }
+            if (!tempUser.getGameToken().equals(array[2])) {
+                validGame = true;
+            }
+        }
+
+        if (!validGame) {
+            outToClient.println("RESPONSE--ALLPARTICIPANTSHAVEJOINED--INVALIDGAMETOKEN");
+        }
+        if (!validUser) {
+            outToClient.println("RESPONSE--ALLPARTICIPANTSHAVEJOINED--USERNOTLOGGEDIN");
+        }
+    }
 
     public void registerUser(String input){
         String array[] = input.split("--");
