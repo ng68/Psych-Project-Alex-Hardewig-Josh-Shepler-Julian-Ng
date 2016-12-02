@@ -8,15 +8,27 @@ public class User {
     private String username;
     private String password;
     private String userToken;
-    private String gameToken;
+    private String gameToken = "0";
+    private int score;
     private boolean isPlaying = false;
 
-//    public User(String username, String password, String userToken, String gameToken){
-//        this.username = username;
-//        this.password = password;
-//        this.userToken = userToken;
-//        this.gameToken = gameToken;
-//    }
+    public User(String username, String password, String userToken){
+        this.username = username;
+        this.password = password;
+        this.userToken = userToken;
+    }
+    public User(String username, String password, String userToken, String gameToken){
+        this(username, password, userToken);
+        this.gameToken = gameToken;
+    }
+
+    public int getScore() {
+        return score;
+    }
+
+    public void setScore(int score) {
+        this.score = score;
+    }
 
     public String getUsername() {
         return username;
