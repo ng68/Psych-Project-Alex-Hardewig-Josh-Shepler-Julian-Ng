@@ -63,9 +63,7 @@ public class RequestHandler extends Thread {
                     logoutUser(input);
                 }
                 if (input.contains("ALLPARTICIPANTSHAVEJOINED"){
-
-
-
+                    launchGame(input);
                 }
 
             }
@@ -191,11 +189,19 @@ public class RequestHandler extends Thread {
         }
 
         if (!validGame) {
-            outToClient.println("RESPONSE--ALLPARTICIPANTSHAVEJOINED--INVALIDGAMETOKEN");
+            outToClient.println("RESPONSE--ALLPARTICIPANTSHAVEJOINED--INVALIDGAMETOKEN--");
         }
         if (!validUser) {
-            outToClient.println("RESPONSE--ALLPARTICIPANTSHAVEJOINED--USERNOTLOGGEDIN");
+            outToClient.println("RESPONSE--ALLPARTICIPANTSHAVEJOINED--USERNOTLOGGEDIN--");
         }
+
+        if (validGame && validUser) {
+            sendGameWord();
+        }
+    }
+
+    public void sendGameWord() {
+        
     }
 
     public void registerUser(String input){
