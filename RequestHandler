@@ -173,9 +173,9 @@ public class RequestHandler extends Thread {
 
         Iterator iterate = userHashMap.entrySet().iterator();
 
-        User finUsername = null;
         boolean validUser = false;
         boolean validGame = false;
+        boolean isPlaying = false;
 
         while (iterate.hasNext()) {
             Map.Entry entry = (Map.Entry) iterate.next();
@@ -183,11 +183,20 @@ public class RequestHandler extends Thread {
             if (tempUser.getUserToken().equals(array[1])){
                 validUser = true;
             }
-            if (!tempUser.getGameToken().equals(array[2])) {
+            if (tempUser.getGameToken().equals(array[2])) {
                 validGame = true;
+            }
+            if (tempUser.isPlaying()) {
+                isPlaying = true;
+            }
+            if (validUser && validGame && !isPlaying) {
+                tempUser.setPlaying(true);
             }
         }
 
+        if (!isPlaying) {
+            outToClient.println("RESPONSE--ALLPARTICIPANTSHAVEJOINED--USERNOTGAMELEADER--");
+        }
         if (!validGame) {
             outToClient.println("RESPONSE--ALLPARTICIPANTSHAVEJOINED--INVALIDGAMETOKEN--");
         }
@@ -195,7 +204,7 @@ public class RequestHandler extends Thread {
             outToClient.println("RESPONSE--ALLPARTICIPANTSHAVEJOINED--USERNOTLOGGEDIN--");
         }
 
-        if (validGame && validUser) {
+        if (validGame && validUser && !isPlaying) {
             sendGameWord();
         }
     }
