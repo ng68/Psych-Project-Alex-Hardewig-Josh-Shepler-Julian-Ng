@@ -215,9 +215,21 @@ public class RequestHandler extends Thread {
             outToClient.println("RESPONSE--CREATENEWUSER--INVALIDUSERNAME");
             return;
         }
-        if (!StringUtils.containsOnly(array[1], "1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_")){
-            outToClient.println("RESPONSE--CREATENEWUSER--INVALIDUSERNAME");
-            return;
+        boolean works = false;
+        String test = array[1];
+        char[] userName = test.toCharArray();
+        for (char c: userName){
+            int counter=0;
+            if (c>=48&&c<=57||c>=65&&c<=90||c>=97&&c<=122||c==95){
+                works=true;
+
+            }
+            else {
+                works=false;
+            }
+        }
+        if (works){
+            System.out.println("Works");
         }
 
         if (array[2] == null){
