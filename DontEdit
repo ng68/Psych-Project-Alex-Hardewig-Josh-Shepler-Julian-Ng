@@ -1,0 +1,463 @@
+import org.apache.commons.lang.StringUtils;
+
+import java.io.*;
+import java.net.*;
+import java.util.*;
+
+/**
+ * Program info
+ *
+ * @author Alex Hardewig, ahardewi@purdue.edu, lab sec G03
+ * @version date
+ */
+public class RequestHandler extends Thread {
+    private Socket clientSocket;
+    private final Object lockObject = new Object();
+    private int clientID;
+    private PrintWriter outToClient = null;
+    private BufferedReader inFromClient = null;
+    private ArrayList<User> participants = new ArrayList<>();
+    private File output = new File("/Users/alexhardewig/IdeaProjects/cs180/Project4/src/UserDatabase.txt");
+    private BufferedWriter out = null;
+    private static ArrayList<String> gameTokenList = new ArrayList<>();
+    private static HashMap<String, User> userHashMap = new HashMap<String, User>();
+
+
+    public RequestHandler(Socket clientSocket, int clientID) throws FileNotFoundException {
+        this.clientSocket = clientSocket;
+        this.clientID = clientID;
+
+    }
+
+    public void run() {
+        String input;
+        try {
+            outToClient = new PrintWriter(clientSocket.getOutputStream(), true);
+            inFromClient = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+            out = new BufferedWriter(new FileWriter(output, true));
+
+            while (true) {
+                input = inFromClient.readLine();
+                if (input.contains("CREATENEWUSER")) {
+                    registerUser(input);
+                }
+                if (input.contains("LOGIN")) {
+                    loginUser(input);
+                }
+
+                if (input.contains("STARTNEWGAME")) {
+
+                    try {
+                        startNewGame(input);
+                    } catch (IOException | InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+
+                if (input.contains("JOINGAME")) {
+                    try {
+                        joinGame(input);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                    synchronized (lockObject) {
+                        while (GameDriver.isDone()) {
+                            lockObject.wait();
+                        }
+                    }
+                }
+
+                if (input.contains("ALLPARTICIPANTS")) {
+                    GameDriver g = new GameDriver(participants, participants.get(0).getGameToken());
+                    g.start();
+                    synchronized (lockObject) {
+                        while (g.isDone()) {
+                            lockObject.wait();
+                        }
+                    }
+
+                }
+            }
+
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+
+//    public void sendMessage(String input){
+//
+//    }
+//    private void collectAndSend(String input) throws IOException {
+//        String array[] = input.split("--");
+//        Iterator iterate2 = userHashMap.entrySet().iterator();
+//
+//
+//        while (iterate2.hasNext()) {
+//            Map.Entry entry = (Map.Entry) iterate2.next();
+//            User tempUser = (User) entry.getValue();
+//            if (tempUser.getGameToken().equals(array[2])) {
+//        playerSuggestions.add(array[3]);
+//            }
+//        }
+//
+//        Iterator iterate = userHashMap.entrySet().iterator();
+////        Random r = new Random();
+//
+//        if (playerSuggestions.size() > 2) {
+////            for (int w = 0; w < playerSuggestions.size(); w++){
+////                System.out.println(playerSuggestions.get(w));
+////            }
+////            System.out.println("Size:" + playerSuggestions.size());
+////            playerSuggestions.remove(1);
+////            playerSuggestions.remove(3);
+////
+////            for (int i = 0; i < playerSuggestions.size(); i++) {
+////                int random = r.nextInt((userHashMap.size() - 1));
+////                playerSuggestionsRandom.add(playerSuggestions.get(random));
+////                playerSuggestions.remove(random);
+////            }
+//            String message = "";
+//            for (int j = 0; j < playerSuggestions.size(); j++) {
+//                message += "--" + playerSuggestions.get(j);
+//            }
+////
+//            while (iterate.hasNext()) {
+//                Map.Entry entry = (Map.Entry) iterate.next();
+//                User tempUser = (User) entry.getValue();
+//                if (tempUser.getGameToken().equals(array[2])) {
+//                    new PrintWriter(tempUser.getPlayerSocket().getOutputStream(), true).println
+//                            ("ROUNDOPTIONS" + message + "--" + gameAnswer);
+//                }
+//            }
+//        }
+//    }
+
+
+
+//    private void logoutUser(String input){
+//        String array[] = input.split("--");
+//
+//
+//    }
+
+//    private void sendGameWord(String input) throws IOException {
+//        String array[] = input.split("--");
+//        Iterator iterate = userHashMap.entrySet().iterator();
+//
+//        User finUsername = null;
+//        String gameQuestion = getGameQuestion();
+//        String gameAnswer = getGameAnswer();
+//        while (iterate.hasNext()) {
+//            Map.Entry entry = (Map.Entry) iterate.next();
+//            User tempUser = (User) entry.getValue();
+//            if (tempUser.getGameToken().equals(array[2])) {
+//                new PrintWriter(tempUser.getPlayerSocket().getOutputStream(), true).println
+//                        ("NEWGAMEWORD--" + gameQuestion + "--" + gameAnswer);
+//            }
+//        }
+//    }
+
+//    public String getGameQuestion() throws IOException {
+//        String[] questions = null;
+//        ArrayList <String> lines = new ArrayList<>();
+//        String banana = null;
+//        while ((banana = reader.readLine())!=null ){
+//            lines.add(banana);
+//        }
+//
+//    }
+
+//    private String getGameQuestion(){
+//        String[] questions = null;
+//            String question = wordleScanner.nextLine();
+//            questions = question.split(":");
+//            return questions[0];
+//
+//    }
+//    private String getGameAnswer(){
+//        String[] questions = null;
+//        String question = wordleScanner2.nextLine();
+//        questions = question.split(":");
+//        return questions[1];
+//
+//    }
+
+
+    private void joinGame(String input) throws InterruptedException {
+        String array[] = input.split("--");
+        Iterator iterate = userHashMap.entrySet().iterator();
+
+        User finUsername;
+        while (iterate.hasNext()) {
+            Map.Entry entry = (Map.Entry) iterate.next();
+            User tempUser = (User)entry.getValue();
+            if (tempUser.getUserToken().equals(array[1])){
+                finUsername = tempUser;
+
+                for (int i = 0; i < gameTokenList.size();i++){
+
+                    if (array[2].equals(gameTokenList.get(i))) {
+
+                        String tempToken = gameTokenList.get(i);
+                        finUsername.setGameToken(tempToken);
+                        //participants.add(finUsername);
+
+                        outToClient.println("RESPONSE--JOINGAME--SUCCESS" + "--"  + gameTokenList.get(i));
+//                        currentThread().wait();
+
+                        break;
+                    }
+
+                }
+            }
+        }
+    }
+
+    private void startNewGame(String input) throws IOException, InterruptedException {
+        String array[] = input.split("--");
+        Iterator iterate = userHashMap.entrySet().iterator();
+        String gameToken;
+
+        while (iterate.hasNext()){
+            Map.Entry entry = (Map.Entry) iterate.next();
+            User tempUser = (User)entry.getValue();
+
+            if (tempUser.getUserToken().equals(array[1])){
+                gameToken = generateRandomToken(3).toLowerCase();
+                tempUser.setGameToken(gameToken);
+                gameTokenList.add(gameToken);
+                tempUser.setScore(checkCumulativeScore(tempUser.getUsername()));
+                tempUser.setNumTimesFooledBy(checkNumTimesFooledByOthers(tempUser.getUsername()));
+                tempUser.setNumTimesFooledOthers(checkNumTimesFooledOthers(tempUser.getUsername()));
+                participants.add(tempUser);
+
+                outToClient.println("RESPONSE--STARTNEWGAME--SUCCESS--" + gameToken);
+
+                while (true){
+
+                   Iterator iterate2 = userHashMap.entrySet().iterator();
+                   while (iterate2.hasNext()){
+                       Map.Entry entry1 = (Map.Entry) iterate2.next();
+                       User joiner = (User)entry1.getValue();
+                       if (joiner.getGameToken().equals(gameToken) && !(joiner.getUsername().equals(tempUser
+                               .getUsername()))){
+
+                           participants.add(joiner);
+                           joiner.setScore(checkCumulativeScore(joiner.getUsername()));
+                           joiner.setNumTimesFooledOthers(checkNumTimesFooledOthers(joiner.getUsername()));
+                           joiner.setNumTimesFooledBy(checkNumTimesFooledByOthers(joiner.getUsername()));
+                           outToClient.println("NEWPARTICIPANT--" + joiner.getUsername()  + "--" + joiner.getScore());
+//                           currentThread().wait();
+
+
+                           return;
+                       }
+                   }
+               }
+            }
+        }
+    }
+
+
+    private void registerUser(String input){
+        String array[] = input.split("--");
+
+        if (array[1] == null){
+            outToClient.println("RESPONSE--CREATENEWUSER--INVALIDUSERNAME");
+            return;
+        }
+        if (array[1].length() >= 10){
+            outToClient.println("RESPONSE--CREATENEWUSER--INVALIDUSERNAME");
+            return;
+        }
+        boolean works = false;
+        String test = array[1];
+        char[] userName = test.toCharArray();
+        for (char c: userName){
+            if (c>=48&&c<=57||c>=65&&c<=90||c>=97&&c<=122||c==95){
+                works=true;
+
+            }
+            else {
+                works=false;
+            }
+        }
+        if (!works){
+            outToClient.println("RESPONSE--CREATENEWUSER--INVALIDUSERNAME");
+        }
+        if (array[2] == null){
+            outToClient.println("RESPONSE--CREATENEWUSER--INVALIDUSERPASSWORD");
+            return;
+        }
+        if (array[2].length() >= 10){
+            outToClient.println("RESPONSE--CREATENEWUSER--INVALIDUSERPASSWORD");
+            return;
+        }
+        boolean works2 = false;
+        String test2 = array[1];
+        char[] userName2 = test2.toCharArray();
+        for (char c: userName2){
+            if (c>=48&&c<=57||c>=65&&c<=90||c>=97&&c<=122||c==35 || c==38 || c==36 || c==42){
+                works2=true;
+
+            }
+            else {
+                works2=false;
+            }
+        }
+        if (!works2){
+            outToClient.println("RESPONSE--CREATENEWUSER--INVALIDPASSWORD");
+        }
+
+//        if (!StringUtils.containsAny(array[2], "ABCDEFGHIJKLMNOPQRSTUVWXYZ")){
+//            outToClient.println("RESPONSE--CREATENEWUSER--INVALIDUSERPASSWORD");
+//            return;
+//        }
+//        if (!StringUtils.containsAny(array[2], "1234567890")){
+//            outToClient.println("RESPONSE--CREATENEWUSER--INVALIDUSERPASSWORD");
+//            return;
+//        }
+
+        try {
+            if (checkUsername(array[1]) == 1){
+                outToClient.println("RESPONSE--CREATENEWUSER--USERALREADYEXISTS");
+            }
+            else {
+
+                try {
+                    out.append("\n");
+                    out.write(array[1] + ":" + array[2] + ":0:0:0");
+                    out.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                outToClient.println("RESPONSE--CREATENEWUSER--SUCCESS");
+            }
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
+    }
+
+
+    private void loginUser(String input){
+        String array[] = input.split("--");
+        try {
+            if (checkUsername(array[1]) == -1){
+                outToClient.println("RESPONSE--LOGIN--UNKNOWNUSER");
+            }
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
+        try {
+            if (checkPassword(input) == -1){
+                outToClient.println("RESPONSE--LOGIN--INVALIDUSERPASSWORD");
+            }
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
+        if (userHashMap.containsKey(array[1])){
+            outToClient.println("RESPONSE--LOGIN--USERALREADYLOGGEDIN");
+        }
+        else {
+            userHashMap.put(array[1], new User(array[1], array[2],generateRandomToken(10)));
+            userHashMap.get(array[1]).setPlayerSocket(clientSocket);
+            outToClient.println("RESPONSE--LOGIN--SUCCESS--" + userHashMap.get(array[1]).getUserToken());
+        }
+    }
+
+    private String generateRandomToken(int numCharacters){
+        String password = "";
+        String[] passworda = {"A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V",
+                "W","X","Y","Z","a","b","c","d","e","f","g","h","i","j","k","l","m","n","o","p","q","r","s","t","u","v",
+                "w","x","y","z"};
+
+        for (int i = 0; i < numCharacters; i++){
+            Random r = new Random();
+            password =  password + (passworda[r.nextInt(51)]);
+        }
+        return password;
+    }
+
+    private int checkPassword(String input) throws FileNotFoundException {
+        String array[] = input.split("--");
+        Scanner fileScanner = new Scanner(new File("/Users/alexhardewig/IdeaProjects/cs180/Project4/src/UserDatabase" +
+                ".txt"));
+        while (fileScanner.hasNextLine()){
+            String line = fileScanner.nextLine();
+
+            if (line.contains(array[1] + ":" + array[2])){
+                return 1;
+            }
+
+        }
+
+        return -1;
+    }
+
+
+
+    private int checkUsername(String username) throws FileNotFoundException {
+        Scanner fileScanner = new Scanner(new File("/Users/alexhardewig/IdeaProjects/cs180/Project4/src/UserDatabase" +
+                ".txt"));
+        while (fileScanner.hasNextLine()){
+            String line = fileScanner.nextLine();
+            String[] name = line.split(":");
+
+            if (name[0].equals(username)){
+                return 1;
+            }
+        }
+        return -1;
+    }
+
+    private int checkNumTimesFooledOthers(String username) throws FileNotFoundException {
+        Scanner fileScanner = new Scanner(new File("/Users/alexhardewig/IdeaProjects/cs180/Project4/src/UserDatabase" +
+                ".txt"));
+        while (fileScanner.hasNextLine()){
+            String line = fileScanner.nextLine();
+            String[] name = line.split(":");
+
+            if (name[0].equals(username)){
+                return Integer.parseInt(name[3]);
+            }
+        }
+        return -1;
+    }
+
+    private int checkNumTimesFooledByOthers(String username) throws FileNotFoundException {
+        Scanner fileScanner = new Scanner(new File("/Users/alexhardewig/IdeaProjects/cs180/Project4/src/UserDatabase" +
+                ".txt"));
+        while (fileScanner.hasNextLine()){
+            String line = fileScanner.nextLine();
+            String[] name = line.split(":");
+
+            if (name[0].equals(username)){
+                return Integer.parseInt(name[4]);
+            }
+        }
+        return -1;
+    }
+
+
+
+    private int checkCumulativeScore(String username) throws FileNotFoundException {
+        Scanner fileScanner = new Scanner(new File("/Users/alexhardewig/IdeaProjects/cs180/Project4/src/UserDatabase" +
+                ".txt"));
+        while (fileScanner.hasNextLine()){
+
+            String line = fileScanner.nextLine();
+            String[] name = line.split(":");
+
+            if (name[0].equals(username)){
+                return Integer.parseInt(name[2]);
+            }
+        }
+        return -1;
+    }
+}
+
+
+
